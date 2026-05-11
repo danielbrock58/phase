@@ -1024,7 +1024,6 @@ pub fn process_triggers(state: &mut GameState, events: &[GameEvent]) {
             let dynamically_granted_casualty_instances = state
                 .objects
                 .get(cast_obj_id)
-                .filter(|obj| obj.additional_cost.is_none())
                 .and_then(|obj| {
                     let paid = state
                         .stack

@@ -589,6 +589,8 @@ export type TargetRef =
   | { Object: ObjectId }
   | { Player: PlayerId };
 
+export type CopyTargetSlot = { current: TargetRef; legal_alternatives: TargetRef[] };
+
 // ── Combat ───────────────────────────────────────────────────────────────
 
 export interface AttackerInfo {
@@ -773,6 +775,7 @@ export type WaitingFor =
   | { type: "EvokeCostChoice"; data: { player: PlayerId; object_id: ObjectId; card_id: CardId; normal_cost: ManaCost; evoke_cost: ManaCost } }
   | { type: "OverloadCostChoice"; data: { player: PlayerId; object_id: ObjectId; card_id: CardId; normal_cost: ManaCost; overload_cost: ManaCost } }
   | { type: "BestowCostChoice"; data: { player: PlayerId; object_id: ObjectId; card_id: CardId; normal_cost: ManaCost; bestow_cost: ManaCost } }
+  | { type: "OverloadCostChoice"; data: { player: PlayerId; object_id: ObjectId; card_id: CardId; normal_cost: ManaCost; overload_cost: ManaCost } }
   | { type: "ChoosePermanentTypeSlot"; data: { player: PlayerId; object_id: ObjectId; card_id: CardId; source: ObjectId; available_slots: CoreType[] } }
   | { type: "MultiTargetSelection"; data: { player: PlayerId; legal_targets: ObjectId[]; min_targets: number; max_targets: number; pending_ability: unknown } }
   | { type: "MiracleReveal"; data: { player: PlayerId; object_id: ObjectId; cost: ManaCost } }
@@ -862,7 +865,10 @@ export type WaitingFor =
       source_id: ObjectId;
       remaining_players: PlayerId[];
       all_kept: ObjectId[];
-    } };
+    } }
+  | { type: "MultiTargetSelection"; data: { player: PlayerId; legal_targets: ObjectId[]; min_targets: number; max_targets: number; pending_ability: unknown } }
+  | { type: "ParadigmCastOffer"; data: { player: PlayerId; offers: ObjectId[] } }
+  | { type: "CopyRetarget"; data: { player: PlayerId; copy_id: ObjectId; target_slots: CopyTargetSlot[]; current_slot?: number } };
 
 // ── Learn ────────────────────────────────────────────────────────────────
 
@@ -995,6 +1001,10 @@ export type GameAction =
   | { type: "ChooseEvokeCost"; data: { use_evoke: boolean } }
   | { type: "ChooseOverloadCost"; data: { use_overload: boolean } }
   | { type: "ChooseBestowCost"; data: { use_bestow: boolean } }
+  | { type: "ChooseOverloadCost"; data: { use_overload: boolean } }
+  | { type: "PayManaAbilityMana"; data: { payment: ManaType[] } }
+  | { type: "CastParadigmCopy"; data: { source: ObjectId } }
+  | { type: "PassParadigmOffer" }
   | { type: "ChoosePermanentTypeSlot"; data: { slot: CoreType } }
   | { type: "CastSpellForFree"; data: { object_id: ObjectId; card_id: CardId; source_id: ObjectId } }
   | { type: "CastSpellAsMiracle"; data: { object_id: ObjectId; card_id: CardId } }

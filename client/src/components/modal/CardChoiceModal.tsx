@@ -39,10 +39,6 @@ type ReturnToHandForCost = Extract<WaitingFor, { type: "ReturnToHandForCost" }>;
 type BlightChoice = Extract<WaitingFor, { type: "BlightChoice" }>;
 type BeholdForCost = Extract<WaitingFor, { type: "BeholdForCost" }>;
 type ExileForCost = Extract<WaitingFor, { type: "ExileForCost" }>;
-type DiscardForManaAbility = Extract<WaitingFor, { type: "DiscardForManaAbility" }>;
-type ExileFromBattlefieldForManaAbility = Extract<WaitingFor, { type: "ExileFromBattlefieldForManaAbility" }>;
-type SacrificeForManaAbility = Extract<WaitingFor, { type: "SacrificeForManaAbility" }>;
-type PayManaAbilityMana = Extract<WaitingFor, { type: "PayManaAbilityMana" }>;
 type CollectEvidenceChoice = Extract<WaitingFor, { type: "CollectEvidenceChoice" }>;
 type HarmonizeTapChoice = Extract<WaitingFor, { type: "HarmonizeTapChoice" }>;
 type PairChoice = Extract<WaitingFor, { type: "PairChoice" }>;
@@ -2979,17 +2975,6 @@ function ManaColorChoiceModal({ data }: { data: ChooseManaColor["data"] }) {
     );
   }
   return <ManaSingleColorChoiceModal options={data.choice.data.options} />;
-}
-
-function PayManaAbilityManaModal({ data }: { data: PayManaAbilityMana["data"] }) {
-  return (
-    <ManaCombinationChoiceModal
-      options={data.options}
-      title="Pay Mana Ability Cost"
-      subtitle="Select which mana to spend"
-      actionType="PayManaAbilityMana"
-    />
-  );
 }
 
 function ManaSingleColorChoiceModal({ options }: { options: ManaType[] }) {

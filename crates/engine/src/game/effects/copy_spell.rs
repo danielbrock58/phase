@@ -27,7 +27,7 @@ pub fn resolve(
             source_id: ability.source_id,
         });
         return Ok(());
-    }
+
 
     // Allocate a new stack ID for the copy.
     let copy_id = ObjectId(state.next_object_id);
@@ -44,7 +44,7 @@ pub fn resolve(
         copy_obj.zone = Zone::Stack;
         copy_obj.is_token = true;
         state.objects.insert(copy_id, copy_obj);
-    }
+
 
     let mut copy_kind = top_entry.kind.clone();
     set_copied_kind_controller(&mut copy_kind, ability.controller);
@@ -60,7 +60,7 @@ pub fn resolve(
         a.source_id = copy_id;
         a.context.additional_cost_paid = false;
         a.context.kickers_paid.clear();
-    }
+
     let copy_entry = crate::types::game_state::StackEntry {
         id: copy_id,
         source_id: copy_id,
@@ -115,7 +115,7 @@ pub fn resolve(
         };
         // EffectResolved deferred until after retarget choice completes.
         return Ok(());
-    }
+
 
     events.push(GameEvent::EffectResolved {
         kind: EffectKind::from(&ability.effect),
@@ -136,19 +136,19 @@ fn copy_source_entry(state: &GameState, ability: &ResolvedAbility) -> Option<Sta
             .iter()
             .find(|entry| entry.id == target_id)
             .cloned();
-    }
+
     if matches!(
         &ability.effect,
         Effect::CopySpell {
             target: TargetFilter::SelfRef
-        }
+    
     ) {
         return state
             .stack
             .iter()
             .find(|entry| entry.id == ability.source_id)
             .cloned();
-    }
+
     state.stack.last().cloned()
 }
 
@@ -158,7 +158,7 @@ fn stack_entry_cant_be_copied(state: &GameState, entry: &StackEntry) -> bool {
         .is_some_and(|ability| ability.cant_be_copied)
     {
         return true;
-    }
+
 
     state
         .objects
@@ -175,25 +175,25 @@ fn set_copied_kind_controller(kind: &mut StackEntryKind, controller: PlayerId) {
         StackEntryKind::Spell {
             ability: Some(ability),
             ..
-        }
+    
         | StackEntryKind::ActivatedAbility { ability, .. } => {
             set_resolved_controller_recursive(ability, controller);
-        }
+    
         StackEntryKind::TriggeredAbility { ability, .. } => {
             set_resolved_controller_recursive(ability, controller);
-        }
+    
         StackEntryKind::Spell { ability: None, .. } | StackEntryKind::KeywordAction { .. } => {}
-    }
+
 }
 
 fn set_resolved_controller_recursive(ability: &mut ResolvedAbility, controller: PlayerId) {
     ability.controller = controller;
     if let Some(sub_ability) = ability.sub_ability.as_mut() {
         set_resolved_controller_recursive(sub_ability, controller);
-    }
+
     if let Some(else_ability) = ability.else_ability.as_mut() {
         set_resolved_controller_recursive(else_ability, controller);
-    }
+
 }
 
 #[cfg(test)]
@@ -228,7 +228,7 @@ mod tests {
                 actual_mana_spent: 0,
             },
         });
-    }
+
 
     #[test]
     fn test_copy_spell_duplicates_stack_entry() {
@@ -297,10 +297,10 @@ mod tests {
                     crate::types::ability::effect_variant_name(&a1.effect),
                     crate::types::ability::effect_variant_name(&a2.effect)
                 );
-            }
+        
             _ => panic!("Expected both entries to be Spells with abilities"),
-        }
-    }
+    
+
 
     #[test]
     fn test_copy_spell_empty_stack_returns_error() {
@@ -319,7 +319,7 @@ mod tests {
 
         let result = resolve(&mut state, &ability, &mut events);
         assert!(result.is_err());
-    }
+
 
     #[test]
     fn test_copy_spell_with_targets_enters_retarget() {
@@ -362,7 +362,7 @@ mod tests {
         assert!(matches!(state.waiting_for, WaitingFor::CopyRetarget { .. }));
         // Copy should still be on the stack
         assert_eq!(state.stack.len(), 2);
-    }
+
 
     #[test]
     fn test_copy_spell_without_targets_skips_retarget() {
@@ -408,7 +408,7 @@ mod tests {
         assert!(events
             .iter()
             .any(|e| matches!(e, GameEvent::EffectResolved { .. })));
-    }
+
 
     /// Helper: push a triggered ability onto the stack (no targets).
     fn push_trigger(
@@ -439,7 +439,7 @@ mod tests {
                 source_name: String::new(),
             },
         });
-    }
+
 
     /// CR 702.176a (Casualty): When another trigger sits between the original
     /// spell and the Casualty copy trigger, SelfRef lookup must find the spell
@@ -538,7 +538,7 @@ mod tests {
                 .is_some_and(|a| matches!(a.effect, Effect::ChangeZone { .. })),
             "Copy should replicate ChangeZone (Anguished Unmaking), not the trigger"
         );
-    }
+
 
     #[test]
     fn uncopyable_activated_ability_on_stack_is_not_copied_through_stack_resolution() {
@@ -599,7 +599,7 @@ mod tests {
         assert!(events
             .iter()
             .any(|event| matches!(event, GameEvent::EffectResolved { .. })));
-    }
+
 
     #[test]
     fn copy_targeted_triggered_ability_on_stack_through_stack_resolution() {
@@ -725,6 +725,143 @@ mod tests {
                 .filter(|event| matches!(event, GameEvent::StackPushed { .. }))
                 .count()
                 >= 2
+        );
+
+}
+
+    /// CR 707.10 + CR 614.1a: Twinning Staff class â€” CopySpellAmplifier static on the
+    /// battlefield queues one extra copy per amplifier via pending_continuation.
+    #[test]
+    fn test_copy_spell_amplifier_queues_extra_copy() {
+        use crate::game::game_object::GameObject;
+        use crate::types::StaticDefinition;
+
+        let mut state = GameState::new_two_player(42);
+
+        // Push a no-target spell (Draw) so retarget is skipped and we test the
+        // pending continuation path cleanly.
+        let original_ability = ResolvedAbility::new(
+            Effect::Draw {
+                count: QuantityExpr::Fixed { value: 2 },
+                target: TargetFilter::Controller,
+            },
+            vec![],
+            ObjectId(10),
+            PlayerId(0),
+        );
+        push_spell(
+            &mut state,
+            ObjectId(10),
+            CardId(1),
+            PlayerId(0),
+            "Divination",
+            original_ability,
+            CastingVariant::Normal,
+        );
+
+        // Place a Twinning Staff-like permanent on the battlefield controlled by player 0.
+        let mut staff = GameObject::new(
+            ObjectId(20),
+            CardId(99),
+            PlayerId(0),
+            "Twinning Staff".to_string(),
+            crate::types::zones::Zone::Battlefield,
+        );
+        staff.static_definitions =
+            vec![StaticDefinition::new(StaticMode::CopySpellAmplifier)].into();
+        state.objects.insert(ObjectId(20), staff);
+        state.battlefield.push_back(ObjectId(20));
+
+        let copy_ability = ResolvedAbility::new(
+            Effect::CopySpell {
+                target: TargetFilter::Any,
+            },
+            vec![],
+            ObjectId(30),
+            PlayerId(0),
+        );
+        let mut events = Vec::new();
+
+        resolve(&mut state, &copy_ability, &mut events).unwrap();
+
+        // Stack: original + first copy = 2 entries.
+        assert_eq!(
+            state.stack.len(),
+            2,
+            "First copy should be on the stack already"
+        );
+        // A pending continuation for the extra copy must have been queued.
+        assert!(
+            state.pending_continuation.is_some(),
+            "Amplifier must queue an extra copy in pending_continuation"
+        );
+
+
+    /// CR 707.10 + CR 614.1a: Twinning Staff class — CopySpellAmplifier static on the
+    /// battlefield queues one extra copy per amplifier via pending_continuation.
+    #[test]
+    fn test_copy_spell_amplifier_queues_extra_copy() {
+        use crate::game::game_object::GameObject;
+        use crate::types::StaticDefinition;
+
+        let mut state = GameState::new_two_player(42);
+
+        // Push a no-target spell (Draw) so retarget is skipped and we test the
+        // pending continuation path cleanly.
+        let original_ability = ResolvedAbility::new(
+            Effect::Draw {
+                count: QuantityExpr::Fixed { value: 2 },
+                target: TargetFilter::Controller,
+            },
+            vec![],
+            ObjectId(10),
+            PlayerId(0),
+        );
+        push_spell(
+            &mut state,
+            ObjectId(10),
+            CardId(1),
+            PlayerId(0),
+            "Divination",
+            original_ability,
+            CastingVariant::Normal,
+        );
+
+        // Place a Twinning Staff-like permanent on the battlefield controlled by player 0.
+        let mut staff = GameObject::new(
+            ObjectId(20),
+            CardId(99),
+            PlayerId(0),
+            "Twinning Staff".to_string(),
+            crate::types::zones::Zone::Battlefield,
+        );
+        staff.static_definitions =
+            vec![StaticDefinition::new(StaticMode::CopySpellAmplifier)].into();
+        state.objects.insert(ObjectId(20), staff);
+        state.battlefield.push_back(ObjectId(20));
+
+        let copy_ability = ResolvedAbility::new(
+            Effect::CopySpell {
+                target: TargetFilter::Any,
+            },
+            vec![],
+            ObjectId(30),
+            PlayerId(0),
+        );
+        let mut events = Vec::new();
+
+        resolve(&mut state, &copy_ability, &mut events).unwrap();
+
+        // Stack: original + first copy = 2 entries.
+        assert_eq!(
+            state.stack.len(),
+            2,
+            "First copy should be on the stack already"
+        );
+        // A pending continuation for the extra copy must have been queued.
+        assert!(
+            state.pending_continuation.is_some(),
+            "Amplifier must queue an extra copy in pending_continuation"
         );
     }
 }
